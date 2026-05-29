@@ -114,3 +114,4 @@ class BookingServiceTest {
         // Não precisa nem bater no banco, já deve falhar antes
         verify(roomRepository, never()).findById(anyLong());
     }
+}
