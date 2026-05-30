@@ -101,7 +101,7 @@ booking-api/
 - **JUnit 5 & Mockito & MockMvc:** Testes unitários e de integração da camada web.
 - **Springdoc OpenAPI (Swagger):** Documentação interativa da API.
 - **Docker & Docker Compose:** Provisionamento do PostgreSQL para ambiente local com banco real.
-- **Kubernetes (K8s):** Manifestos para orquestração em ambiente Cloud (PoC).
+- **Kubernetes (K8s):** Manifestos para orquestração em ambiente Cloud com caráter de prova de conceito (PoC).
 
 ---
 
@@ -618,4 +618,4 @@ Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`
 
 6. **Tratamento Global de Exceções:** O `GlobalExceptionHandler` padroniza o JSON de erro e mapeia exceções para os status HTTP adequados (400, 409, 500), incluindo fallback para erros internos.
 
-7. **Infraestrutura como Código (K8s PoC):** O `docker-compose` provê apenas o PostgreSQL para avaliação local com banco real. A pasta `/k8s` é uma **Prova de Conceito (PoC)** de orquestração em Cloud (Deployments e Services), não sendo necessária para avaliar o desafio.
+7. **Infraestrutura como Código (K8s PoC):** O `docker-compose` provê apenas o PostgreSQL para avaliação local com banco real. A pasta `/k8s` é uma **Prova de Conceito (PoC)** de orquestração em Cloud (Deployments e Services), não sendo necessária para execução da API.
