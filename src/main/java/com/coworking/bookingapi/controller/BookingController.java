@@ -30,7 +30,8 @@ public class BookingController {
     @Operation(summary = "Criar uma nova reserva", description = "Registra uma reserva validando a disponibilidade de horário da sala para evitar conflitos.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Reserva criada com sucesso"),
-            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos ou conflito de regras de negócio (ex: horário indisponível)")
+            @ApiResponse(responseCode = "409", description = "Conflito: Já existe uma reserva confirmada para esta sala neste horário"),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos (falha na validação dos campos no formato JSON)")
     })
     @PostMapping
     public ResponseEntity<BookingResponseDTO> createBooking(@RequestBody @Valid BookingRequestDTO request) {
@@ -48,7 +49,9 @@ public class BookingController {
     @Operation(summary = "Cancelar uma reserva", description = "Altera o status de uma reserva existente para CANCELLED (Cancelada).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Reserva cancelada com sucesso"),
-            @ApiResponse(responseCode = "400", description = "Reserva já encontra-se cancelada ou parâmetros inválidos")
+            @ApiResponse(responseCode = "409", description = "Conflito: A reserva já encontra-se cancelada"),
+            @ApiResponse(responseCode = "404", description = "Reserva não encontrada com o ID informado"),
+            @ApiResponse(responseCode = "400", description = "Parâmetros da requisição inválidos")
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<BookingResponseDTO> cancelBooking(@PathVariable Long id) {
