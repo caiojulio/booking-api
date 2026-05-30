@@ -2,6 +2,72 @@
 
 Uma API RESTful robusta desenvolvida para gerir o cadastro e a reserva de salas num espaço de coworking. O sistema garante a integridade da agenda, prevenindo conflitos de horários através de regras de negócio validadas, e foi construído com foco em boas práticas de engenharia de software e arquitetura limpa.
 
+
+## Estrutura do Projeto
+
+O projeto segue uma arquitetura em camadas típica de Spring Boot: **Controller → Service → Repository → Model**, com DTOs para entrada de dados, tratamento centralizado de exceções e testes separados por camada.
+
+booking-api/
+├── docs/                               
+│   └── diagrama-classes-coworking-api.png     # Modelagem de domínio
+├── .mvn/
+│   └── wrapper/
+│       └── maven-wrapper.properties   
+├── k8s/                               # Manifestos do Kubernetes (PoC)
+│   ├── deployment.yaml                # Manifesto Kubernetes (Deployment)
+│   └── service.yaml                   # Manifesto Kubernetes (Service/LoadBalancer)
+├── src/
+│   ├── main/
+│   │   ├── java/com/coworking/bookingapi/
+│   │   │   ├── BookingApiApplication.java   # Classe principal da aplicação
+│   │   │   ├── config/
+│   │   │   │   └── OpenApiConfig.java      # Configuração do Swagger/OpenAPI
+│   │   │   ├── controller/
+│   │   │   │   ├── BookingController.java  # Endpoints REST de reservas
+│   │   │   │   └── RoomController.java     # Endpoints REST de salas
+│   │   │   ├── dto/
+│   │   │   │   ├── BookingRequestDTO.java  # DTO de entrada para reservas
+│   │   │   │   └── RoomRequestDTO.java     # DTO de entrada para salas
+│   │   │   ├── exception/
+│   │   │   │   └── GlobalExceptionHandler.java  # Tratamento global de erros
+│   │   │   ├── model/
+│   │   │   │   ├── Booking.java            # Entidade JPA de reserva
+│   │   │   │   ├── BookingStatus.java      # Enum de status da reserva
+│   │   │   │   ├── Room.java               # Entidade JPA de sala
+│   │   │   │   └── RoomType.java           # Enum de tipo de sala
+│   │   │   ├── repository/
+│   │   │   │   ├── BookingRepository.java  # Acesso a dados de reservas
+│   │   │   │   └── RoomRepository.java     # Acesso a dados de salas
+│   │   │   └── service/
+│   │   │       ├── BookingService.java     # Regras de negócio de reservas
+│   │   │       └── RoomService.java        # Regras de negócio de salas
+│   │   └── resources/
+│   │       ├── application.yml             # Configuração padrão (H2 em memória)
+│   │       └── application-prod.yml        # Configuração de produção (PostgreSQL)
+│   └── test/
+│       └── java/com/coworking/bookingapi/
+│           ├── BookingApiApplicationTests.java  
+│           ├── controller/
+│           │   └── RoomControllerTest.java      # Testes de integração (MockMvc)
+│           └── service/
+│               ├── BookingServiceTest.java      # Testes unitários de reservas
+│               └── RoomServiceTest.java         # Testes unitários de salas
+├── .gitattributes
+├── .gitignore
+├── docker-compose.yml                 # PostgreSQL para ambiente local/prod
+├── HELP.md                            
+├── mvnw                               
+├── mvnw.cmd                           
+├── pom.xml                            
+└── README.md
+
+## Modelagem do Domínio
+
+Abaixo está o diagrama de classes que ilustra as entidades principais do sistema e seus relacionamentos:
+
+![Diagrama de Classes da API](docs/diagrama-classes-coworking-api.png)
+
+
 ## Tecnologias e Ferramentas
 
 - **Java 17 & Spring Boot 4.0.6:** Base do desenvolvimento backend.
