@@ -4,6 +4,7 @@ import com.coworking.bookingapi.model.Room;
 import com.coworking.bookingapi.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.coworking.bookingapi.dto.RoomRequestDTO;
 
 import java.util.List;
@@ -11,6 +12,8 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+// Define que, por padrão, todos os métodos desta classe são apenas para leitura.
+@Transactional(readOnly = true)
 public class RoomService {
 
     private final RoomRepository roomRepository;
@@ -18,8 +21,9 @@ public class RoomService {
     /**
      * Cadastra uma nova sala no sistema.
      */
+
+    @Transactional
     public Room createRoom(RoomRequestDTO request) {
-        // A conversão (DTO -> Entidade) agora acontece no lugar certo: na camada de negócio.
         Room room = new Room(request.name(), request.type(), request.capacity());
         return roomRepository.save(room);
     }

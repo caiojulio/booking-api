@@ -1,6 +1,7 @@
 package com.coworking.bookingapi.controller;
 
 import com.coworking.bookingapi.dto.RoomRequestDTO;
+import com.coworking.bookingapi.dto.RoomResponseDTO;
 import com.coworking.bookingapi.model.Room;
 import com.coworking.bookingapi.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,10 +10,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -29,16 +31,26 @@ public class RoomController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos enviados na requisição")
     })
     @PostMapping
-    public ResponseEntity<Room> createRoom(@RequestBody @Valid RoomRequestDTO request) {
+    public ResponseEntity<RoomResponseDTO> createRoom(@RequestBody @Valid RoomRequestDTO request) {
         Room savedRoom = roomService.createRoom(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedRoom);
+
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(savedRoom.getId())
+                .toUri();
+
+        return ResponseEntity.created(location).body(RoomResponseDTO.fromEntity(savedRoom));
     }
 
     @Operation(summary = "Listar todas as salas", description = "Retorna uma lista contendo todas as salas registradas no coworking.")
     @ApiResponse(responseCode = "200", description = "Lista de salas retornada com sucesso")
     @GetMapping
-    public ResponseEntity<List<Room>> getAllRooms() {
-        return ResponseEntity.ok(roomService.getAllRooms());
+    public ResponseEntity<List<RoomResponseDTO>> getAllRooms() {
+        List<RoomResponseDTO> rooms = roomService.getAllRooms().stream()
+                .map(RoomResponseDTO::fromEntity)
+                .toList();
+
+        return ResponseEntity.ok(rooms);
     }
 
     @Operation(summary = "Buscar sala por ID", description = "Retorna os detalhes completos de uma sala específica cadastrada no sistema.")
@@ -47,9 +59,10 @@ public class RoomController {
             @ApiResponse(responseCode = "404", description = "Sala não encontrada com o ID informado")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Room> getRoomById(@PathVariable Long id) {
+    public ResponseEntity<RoomResponseDTO> getRoomById(@PathVariable Long id) {
         return roomService.getRoomById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(RoomResponseDTO::fromEntity) // Mapeia a Entidade contida no Optional para DTO
+                .map(ResponseEntity::ok)          // Se estiver presente, encapsula no 200 OK
+                .orElse(ResponseEntity.notFound().build()); // Se não, retorna 404
     }
 }

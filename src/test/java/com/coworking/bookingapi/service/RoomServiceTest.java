@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -36,22 +37,22 @@ class RoomServiceTest {
     private RoomService roomService;
 
     private Room mockRoom;
-    private RoomRequestDTO validRequestDTO; // DTO para o teste
+    private RoomRequestDTO validRequestDTO;
 
     @BeforeEach
     void setUp() {
-        // Objeto que simula o que o banco de dados vai retornar
+        // Instanciação segura através do construtor de domínio rico
         mockRoom = new Room("Auditorio Principal", RoomType.AUDITORIUM, 50);
-        mockRoom.setId(1L);
 
-        // Objeto que simula os dados que o usuário enviou
+        // Injeção de ID contornando o encapsulamento (exclusivo para testes)
+        ReflectionTestUtils.setField(mockRoom, "id", 1L);
+
         validRequestDTO = new RoomRequestDTO("Auditorio Principal", RoomType.AUDITORIUM, 50);
     }
 
     @Test
     @DisplayName("Deve guardar e retornar uma nova sala com sucesso")
     void createRoom_Success() {
-        // Dizemos ao mock para retornar nossa mockRoom quando o repositório tentar salvar qualquer coisa
         when(roomRepository.save(any(Room.class))).thenReturn(mockRoom);
 
         Room savedRoom = roomService.createRoom(validRequestDTO);
@@ -62,9 +63,37 @@ class RoomServiceTest {
     }
 
     @Test
+    @DisplayName("Deve lançar exceção ao tentar criar sala com nome em branco")
+    void createRoom_BlankName_ShouldThrowException() {
+        RoomRequestDTO invalidRequest = new RoomRequestDTO("   ", RoomType.SHARED, 10);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            roomService.createRoom(invalidRequest);
+        });
+
+        assertEquals("O nome da sala é obrigatório.", exception.getMessage());
+        verify(roomRepository, never()).save(any(Room.class));
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção ao tentar criar sala com capacidade zero ou negativa")
+    void createRoom_InvalidCapacity_ShouldThrowException() {
+        RoomRequestDTO invalidRequest = new RoomRequestDTO("Sala B", RoomType.INDIVIDUAL, 0);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            roomService.createRoom(invalidRequest);
+        });
+
+        assertEquals("A capacidade da sala deve ser maior que zero.", exception.getMessage());
+        verify(roomRepository, never()).save(any(Room.class));
+    }
+
+    @Test
     @DisplayName("Deve retornar uma lista com todas as salas")
     void getAllRooms_Success() {
         Room room2 = new Room("Sala de Reunioes", RoomType.SHARED, 10);
+        ReflectionTestUtils.setField(room2, "id", 2L);
+
         when(roomRepository.findAll()).thenReturn(Arrays.asList(mockRoom, room2));
 
         List<Room> rooms = roomService.getAllRooms();

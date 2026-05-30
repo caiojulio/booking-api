@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
@@ -38,11 +39,13 @@ class RoomControllerTest {
     private ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     @Test
-    @DisplayName("Deve retornar 201 Created ao criar uma sala com dados válidos")
+    @DisplayName("Deve retornar 201 Created e o cabeçalho Location ao criar uma sala com dados válidos")
     void createRoom_WithValidData_ReturnsCreated() throws Exception {
         RoomRequestDTO request = new RoomRequestDTO("Sala A", RoomType.INDIVIDUAL, 1);
+
+        // Uso do construtor rico e injeção de ID via Reflection para contornar o encapsulamento
         Room mockRoom = new Room("Sala A", RoomType.INDIVIDUAL, 1);
-        mockRoom.setId(1L);
+        ReflectionTestUtils.setField(mockRoom, "id", 1L);
 
         Mockito.when(roomService.createRoom(any(RoomRequestDTO.class))).thenReturn(mockRoom);
 
@@ -50,8 +53,11 @@ class RoomControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
+                .andExpect(header().exists("Location")) // Valida nossa boa prática RESTful
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/api/rooms/1")))
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("Sala A"));
+                .andExpect(jsonPath("$.name").value("Sala A"))
+                .andExpect(jsonPath("$.type").value("INDIVIDUAL")); // Valida conversão do Enum pelo DTO
     }
 
     @Test
@@ -68,16 +74,21 @@ class RoomControllerTest {
     }
 
     @Test
-    @DisplayName("Deve retornar 200 OK e a lista de salas")
+    @DisplayName("Deve retornar 200 OK e a lista de salas formatada pelo DTO")
     void getAllRooms_ReturnsOk() throws Exception {
         Room room1 = new Room("Sala A", RoomType.INDIVIDUAL, 1);
+        ReflectionTestUtils.setField(room1, "id", 1L);
+
         Room room2 = new Room("Sala B", RoomType.SHARED, 5);
+        ReflectionTestUtils.setField(room2, "id", 2L);
 
         Mockito.when(roomService.getAllRooms()).thenReturn(Arrays.asList(room1, room2));
 
         mockMvc.perform(get("/api/rooms"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size()").value(2))
-                .andExpect(jsonPath("$[0].name").value("Sala A"));
+                .andExpect(jsonPath("$[0].name").value("Sala A"))
+                .andExpect(jsonPath("$[0].type").value("INDIVIDUAL")) // Verifica a serialização do ResponseDTO
+                .andExpect(jsonPath("$[1].name").value("Sala B"));
     }
 }
