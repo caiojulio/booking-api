@@ -11,6 +11,7 @@ Uma API RESTful desenvolvida para gerir o cadastro e a reserva de salas num espa
 * [Exemplos de Uso (Postman)](#exemplos-de-uso-postman)
 * [Formato de Erros](#formato-de-erros)
 * [Decisões Arquiteturais](#decisões-arquiteturais)
+* [Processo de Desenvolvimento da API](#processo-de-desenvolvimento-da-api)
 
 ---
 
@@ -619,3 +620,12 @@ Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`
 6. **Tratamento Global de Exceções:** O `GlobalExceptionHandler` padroniza o JSON de erro e mapeia exceções para os status HTTP adequados (400, 409, 500), incluindo fallback para erros internos.
 
 7. **Infraestrutura como Código (K8s PoC):** O `docker-compose` provê apenas o PostgreSQL para avaliação local com banco real. A pasta `/k8s` é uma **Prova de Conceito (PoC)** de orquestração em Cloud (Deployments e Services), não sendo necessária para execução da API.
+
+## Processo de Desenvolvimento da API
+
+O projeto foi desenvolvido buscando seguir boas práticas de controle de versão e organização de código:
+
+1. **Desenvolvimento com Branches:** A maior parte das novas funcionalidades (como `feat/available-rooms-query`) foi desenvolvida em branches locais isoladas para garantir a estabilidade do código.
+2. **Commits Semânticos (Conventional Commits):** Os commits foram estruturados de forma atômica e descritiva (ex: `feat:`, `docs:`, `chore:`), garantindo um histórico de alterações legível e organizado.
+3. **Fluxo de Integração:** Para o desenvolvimento das funcionalidades isoladas, seguiu-se o padrão de atualizar a branch local com a `main` remota (`pull`), realizar o `merge` local e, em seguida, o `push` para o repositório remoto.
+4. **Validação Local:** Sempre que aplicável, os testes unitários (`./mvnw test`) foram executados localmente para garantir o bom funcionamento da API antes do envio final.
