@@ -1,6 +1,7 @@
 package com.coworking.bookingapi.controller;
 
 import com.coworking.bookingapi.dto.BookingRequestDTO;
+import com.coworking.bookingapi.dto.BookingResponseDTO;
 import com.coworking.bookingapi.model.Booking;
 import com.coworking.bookingapi.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,10 +11,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -31,9 +33,16 @@ public class BookingController {
             @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos ou conflito de regras de negócio (ex: horário indisponível)")
     })
     @PostMapping
-    public ResponseEntity<Booking> createBooking(@RequestBody @Valid BookingRequestDTO request) {
+    public ResponseEntity<BookingResponseDTO> createBooking(@RequestBody @Valid BookingRequestDTO request) {
         Booking savedBooking = bookingService.createBooking(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedBooking);
+
+        // Boa prática REST: Retornar a URI (link) do novo recurso criado no cabeçalho "Location"
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(savedBooking.getId())
+                .toUri();
+
+        return ResponseEntity.created(location).body(BookingResponseDTO.fromEntity(savedBooking));
     }
 
     @Operation(summary = "Cancelar uma reserva", description = "Altera o status de uma reserva existente para CANCELLED (Cancelada).")
@@ -42,16 +51,21 @@ public class BookingController {
             @ApiResponse(responseCode = "400", description = "Reserva já encontra-se cancelada ou parâmetros inválidos")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Booking> cancelBooking(@PathVariable Long id) {
+    public ResponseEntity<BookingResponseDTO> cancelBooking(@PathVariable Long id) {
         Booking cancelledBooking = bookingService.cancelBooking(id);
-        return ResponseEntity.ok(cancelledBooking);
+        return ResponseEntity.ok(BookingResponseDTO.fromEntity(cancelledBooking));
     }
 
     @Operation(summary = "Consultar agenda do dia", description = "Retorna uma lista cronológica de todas as reservas confirmadas para uma data específica.")
     @ApiResponse(responseCode = "200", description = "Agenda retornada com sucesso")
     @GetMapping("/agenda")
-    public ResponseEntity<List<Booking>> getDailyAgenda(
+    public ResponseEntity<List<BookingResponseDTO>> getDailyAgenda(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(bookingService.getDailyAgenda(date));
+
+        List<BookingResponseDTO> agenda = bookingService.getDailyAgenda(date).stream()
+                .map(BookingResponseDTO::fromEntity)
+                .toList();
+
+        return ResponseEntity.ok(agenda);
     }
 }

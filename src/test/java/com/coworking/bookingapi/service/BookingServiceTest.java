@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -21,7 +22,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -46,24 +46,23 @@ class BookingServiceTest {
 
     private Room mockRoom;
     private Booking mockBooking;
-    private BookingRequestDTO validRequest; // Adicionado para os testes
+    private BookingRequestDTO validRequest;
 
     @BeforeEach
     void setUp() {
         mockRoom = new Room("Sala A", RoomType.SHARED, 10);
-        mockRoom.setId(1L);
+        // Injeta o ID de forma limpa, respeitando o encapsulamento do domínio rico
+        ReflectionTestUtils.setField(mockRoom, "id", 1L);
 
-        // Objeto de retorno esperado do banco
-        mockBooking = new Booking();
-        mockBooking.setResponsiblePerson("John Doe");
-        mockBooking.setDate(LocalDate.of(2025, 10, 25));
-        mockBooking.setStartTime(LocalTime.of(10, 0));
-        mockBooking.setEndTime(LocalTime.of(12, 0));
-        mockBooking.setRoom(mockRoom);
-        mockBooking.setStatus(BookingStatus.CONFIRMED);
+        mockBooking = new Booking(
+                "John Doe",
+                LocalDate.of(2025, 10, 25),
+                LocalTime.of(10, 0),
+                LocalTime.of(12, 0),
+                mockRoom
+        );
+        ReflectionTestUtils.setField(mockBooking, "id", 1L);
 
-        // Novo: O DTO que simula a requisição do usuário
-        // ATENÇÃO: Verifique se a ordem dos parâmetros aqui bate com o seu record BookingRequestDTO
         validRequest = new BookingRequestDTO(
                 "John Doe",
                 LocalDate.of(2025, 10, 25),
@@ -83,7 +82,6 @@ class BookingServiceTest {
 
         when(bookingRepository.save(any(Booking.class))).thenReturn(mockBooking);
 
-        // Agora passamos o validRequest (DTO) em vez do mockBooking
         Booking savedBooking = bookingService.createBooking(validRequest);
 
         assertNotNull(savedBooking);
@@ -95,13 +93,11 @@ class BookingServiceTest {
     @DisplayName("Deve lançar exceção ao tentar reservar com conflito de horário")
     void createBooking_WithConflict_ShouldThrowException() {
         when(roomRepository.findById(1L)).thenReturn(Optional.of(mockRoom));
-
         when(bookingRepository.existsConflictingBooking(
                 eq(1L), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
                 .thenReturn(true);
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
-            // Passamos o validRequest (DTO)
             bookingService.createBooking(validRequest);
         });
 
@@ -112,7 +108,12 @@ class BookingServiceTest {
     @Test
     @DisplayName("Deve lançar exceção quando o horário de início for depois do horário de fim")
     void createBooking_InvalidTimes_ShouldThrowException() {
-        // Criamos um DTO específico com horários inválidos para este teste
+
+        when(roomRepository.findById(1L)).thenReturn(Optional.of(mockRoom));
+        when(bookingRepository.existsConflictingBooking(
+                eq(1L), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(false);
+
         BookingRequestDTO invalidRequest = new BookingRequestDTO(
                 "John Doe",
                 LocalDate.of(2025, 10, 25),
@@ -126,6 +127,33 @@ class BookingServiceTest {
         });
 
         assertEquals("O horário de início deve ser anterior ao horário de término.", exception.getMessage());
-        verify(roomRepository, never()).findById(anyLong());
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    @DisplayName("Deve cancelar uma reserva com sucesso delegando ao domínio")
+    void cancelBooking_Success() {
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(mockBooking));
+        when(bookingRepository.save(any(Booking.class))).thenReturn(mockBooking);
+
+        Booking cancelledBooking = bookingService.cancelBooking(1L);
+
+        assertEquals(BookingStatus.CANCELLED, cancelledBooking.getStatus());
+        verify(bookingRepository, times(1)).save(mockBooking);
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção ao tentar cancelar uma reserva já cancelada")
+    void cancelBooking_AlreadyCancelled_ShouldThrowException() {
+        mockBooking.cancel(); // Adiantamos o status da entidade mockada para cancelada
+
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(mockBooking));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            bookingService.cancelBooking(1L);
+        });
+
+        assertEquals("Esta reserva já encontra-se cancelada.", exception.getMessage());
+        verify(bookingRepository, never()).save(any(Booking.class));
     }
 }

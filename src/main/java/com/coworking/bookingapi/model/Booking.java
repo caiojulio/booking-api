@@ -1,18 +1,14 @@
 package com.coworking.bookingapi.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "tb_bookings")
 public class Booking {
@@ -37,8 +33,44 @@ public class Booking {
     @Column(nullable = false, length = 20)
     private BookingStatus status;
 
-    // Relacionamento N:1 com a Sala (Várias reservas podem pertencer a uma sala)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
+
+    /**
+     * Construtor que garante que nenhuma reserva nasça em um estado inválido ou sem os dados obrigatórios.
+     */
+    public Booking(String responsiblePerson, LocalDate date, LocalTime startTime, LocalTime endTime, Room room) {
+        validateTimes(startTime, endTime);
+
+        this.responsiblePerson = responsiblePerson;
+        this.date = date;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.room = room;
+        this.status = BookingStatus.CONFIRMED;
+    }
+
+    /**
+     * Comportamento de Domínio (Business Behavior):
+     * Centraliza a lógica de cancelamento dentro da própria entidade.
+     */
+    public void cancel() {
+        if (this.status == BookingStatus.CANCELLED) {
+            throw new IllegalStateException("Esta reserva já encontra-se cancelada.");
+        }
+        this.status = BookingStatus.CANCELLED;
+    }
+
+    /**
+     * Abstração de Validação Interna.
+     */
+    private void validateTimes(LocalTime startTime, LocalTime endTime) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("Os horários de início e término são obrigatórios.");
+        }
+        if (startTime.isAfter(endTime) || startTime.equals(endTime)) {
+            throw new IllegalArgumentException("O horário de início deve ser anterior ao horário de término.");
+        }
+    }
 }

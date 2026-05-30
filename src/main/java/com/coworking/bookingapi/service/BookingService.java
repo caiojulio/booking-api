@@ -25,31 +25,19 @@ public class BookingService {
      */
     @Transactional
     public Booking createBooking(BookingRequestDTO request) {
-        if (request.startTime().isAfter(request.endTime()) || request.startTime().equals(request.endTime())) {
-            throw new IllegalArgumentException("O horário de início deve ser anterior ao horário de término.");
-        }
-
         Room room = roomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("Sala não encontrada com o ID informado."));
 
-        boolean hasConflict = bookingRepository.existsConflictingBooking(
-                room.getId(),
+        validateConflict(room.getId(), request);
+
+        // A entidade assume o controle: Valida horários internamente e nasce num estado válido
+        Booking booking = new Booking(
+                request.responsiblePerson(),
                 request.date(),
                 request.startTime(),
-                request.endTime()
+                request.endTime(),
+                room
         );
-
-        if (hasConflict) {
-            throw new IllegalStateException("Já existe uma reserva confirmada para esta sala neste horário.");
-        }
-
-        Booking booking = new Booking();
-        booking.setResponsiblePerson(request.responsiblePerson());
-        booking.setDate(request.date());
-        booking.setStartTime(request.startTime());
-        booking.setEndTime(request.endTime());
-        booking.setRoom(room);
-        booking.setStatus(BookingStatus.CONFIRMED);
 
         return bookingRepository.save(booking);
     }
@@ -60,13 +48,10 @@ public class BookingService {
     @Transactional
     public Booking cancelBooking(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Reserva não encontrada."));
+                .orElseThrow(() -> new IllegalArgumentException("Reserva não encontrada com o ID informado."));
 
-        if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new IllegalStateException("Esta reserva já está cancelada.");
-        }
+        booking.cancel();
 
-        booking.setStatus(BookingStatus.CANCELLED);
         return bookingRepository.save(booking);
     }
 
@@ -75,5 +60,21 @@ public class BookingService {
      */
     public List<Booking> getDailyAgenda(LocalDate date) {
         return bookingRepository.findByDateAndStatusOrderByStartTimeAsc(date, BookingStatus.CONFIRMED);
+    }
+
+    /**
+     * Extração de metodo privado para manter o metodo principal focado (responsabilidade unica).
+     */
+    private void validateConflict(Long roomId, BookingRequestDTO request) {
+        boolean hasConflict = bookingRepository.existsConflictingBooking(
+                roomId,
+                request.date(),
+                request.startTime(),
+                request.endTime()
+        );
+
+        if (hasConflict) {
+            throw new IllegalStateException("Já existe uma reserva confirmada para esta sala neste horário.");
+        }
     }
 }
