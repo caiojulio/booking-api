@@ -3,6 +3,10 @@ package com.coworking.bookingapi.controller;
 import com.coworking.bookingapi.dto.BookingRequestDTO;
 import com.coworking.bookingapi.model.Booking;
 import com.coworking.bookingapi.service.BookingService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -16,34 +20,35 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
+@Tag(name = "Reservas", description = "Endpoints para gerenciamento de reservas, cancelamentos e consulta de agenda")
 public class BookingController {
 
     private final BookingService bookingService;
 
-    /**
-     * Endpoint para criar uma reserva.
-     */
+    @Operation(summary = "Criar uma nova reserva", description = "Registra uma reserva validando a disponibilidade de horário da sala para evitar conflitos.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Reserva criada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos ou conflito de regras de negócio (ex: horário indisponível)")
+    })
     @PostMapping
     public ResponseEntity<Booking> createBooking(@RequestBody @Valid BookingRequestDTO request) {
-        // O Controller repassa o DTO diretamente
         Booking savedBooking = bookingService.createBooking(request);
-
         return ResponseEntity.status(HttpStatus.CREATED).body(savedBooking);
     }
 
-    /**
-     * Endpoint para cancelar uma reserva existente.
-     */
+    @Operation(summary = "Cancelar uma reserva", description = "Altera o status de uma reserva existente para CANCELLED (Cancelada).")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Reserva cancelada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Reserva já encontra-se cancelada ou parâmetros inválidos")
+    })
     @DeleteMapping("/{id}")
     public ResponseEntity<Booking> cancelBooking(@PathVariable Long id) {
         Booking cancelledBooking = bookingService.cancelBooking(id);
         return ResponseEntity.ok(cancelledBooking);
     }
 
-    /**
-     * Endpoint para consultar a agenda do dia.
-     * Exemplo de uso: /api/bookings/agenda?date=2023-10-25
-     */
+    @Operation(summary = "Consultar agenda do dia", description = "Retorna uma lista cronológica de todas as reservas confirmadas para uma data específica.")
+    @ApiResponse(responseCode = "200", description = "Agenda retornada com sucesso")
     @GetMapping("/agenda")
     public ResponseEntity<List<Booking>> getDailyAgenda(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
