@@ -1,5 +1,6 @@
 package com.coworking.bookingapi.service;
 
+import com.coworking.bookingapi.dto.BookingRequestDTO;
 import com.coworking.bookingapi.model.Booking;
 import com.coworking.bookingapi.model.BookingStatus;
 import com.coworking.bookingapi.model.Room;
@@ -45,39 +46,49 @@ class BookingServiceTest {
 
     private Room mockRoom;
     private Booking mockBooking;
+    private BookingRequestDTO validRequest; // Adicionado para os testes
 
     @BeforeEach
     void setUp() {
-        // Prepara os dados falsos antes de cada teste rodar
         mockRoom = new Room("Sala A", RoomType.SHARED, 10);
         mockRoom.setId(1L);
 
+        // Objeto de retorno esperado do banco
         mockBooking = new Booking();
         mockBooking.setResponsiblePerson("John Doe");
         mockBooking.setDate(LocalDate.of(2025, 10, 25));
         mockBooking.setStartTime(LocalTime.of(10, 0));
         mockBooking.setEndTime(LocalTime.of(12, 0));
         mockBooking.setRoom(mockRoom);
+        mockBooking.setStatus(BookingStatus.CONFIRMED);
+
+        // Novo: O DTO que simula a requisição do usuário
+        // ATENÇÃO: Verifique se a ordem dos parâmetros aqui bate com o seu record BookingRequestDTO
+        validRequest = new BookingRequestDTO(
+                "John Doe",
+                LocalDate.of(2025, 10, 25),
+                LocalTime.of(10, 0),
+                LocalTime.of(12, 0),
+                1L
+        );
     }
 
     @Test
     @DisplayName("Deve criar uma reserva com sucesso quando não houver conflito")
     void createBooking_Success() {
-        // Configura o comportamento esperado dos Mocks
         when(roomRepository.findById(1L)).thenReturn(Optional.of(mockRoom));
         when(bookingRepository.existsConflictingBooking(
                 eq(1L), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
-                .thenReturn(false); // Diz que NÃO tem conflito
+                .thenReturn(false);
 
         when(bookingRepository.save(any(Booking.class))).thenReturn(mockBooking);
 
-        // Executa o método real
-        Booking savedBooking = bookingService.createBooking(mockBooking);
+        // Agora passamos o validRequest (DTO) em vez do mockBooking
+        Booking savedBooking = bookingService.createBooking(validRequest);
 
-        // Valida se o resultado é o esperado
         assertNotNull(savedBooking);
         assertEquals(BookingStatus.CONFIRMED, savedBooking.getStatus());
-        verify(bookingRepository, times(1)).save(any(Booking.class)); // Garante que salvou
+        verify(bookingRepository, times(1)).save(any(Booking.class));
     }
 
     @Test
@@ -85,33 +96,36 @@ class BookingServiceTest {
     void createBooking_WithConflict_ShouldThrowException() {
         when(roomRepository.findById(1L)).thenReturn(Optional.of(mockRoom));
 
-        // Simula que JÁ EXISTE uma reserva no banco para esse horário
         when(bookingRepository.existsConflictingBooking(
                 eq(1L), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
                 .thenReturn(true);
 
-        // Valida se a exceção correta foi lançada e impede o salvamento
         IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
-            bookingService.createBooking(mockBooking);
+            // Passamos o validRequest (DTO)
+            bookingService.createBooking(validRequest);
         });
 
         assertEquals("Já existe uma reserva confirmada para esta sala neste horário.", exception.getMessage());
-        verify(bookingRepository, never()).save(any(Booking.class)); // Garante que NÃO salvou
+        verify(bookingRepository, never()).save(any(Booking.class));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando o horário de início for depois do horário de fim")
     void createBooking_InvalidTimes_ShouldThrowException() {
-        // Altera o horário para ser inválido (início 14h, fim 10h)
-        mockBooking.setStartTime(LocalTime.of(14, 0));
-        mockBooking.setEndTime(LocalTime.of(10, 0));
+        // Criamos um DTO específico com horários inválidos para este teste
+        BookingRequestDTO invalidRequest = new BookingRequestDTO(
+                "John Doe",
+                LocalDate.of(2025, 10, 25),
+                LocalTime.of(14, 0), // Início depois do fim
+                LocalTime.of(10, 0),
+                1L
+        );
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            bookingService.createBooking(mockBooking);
+            bookingService.createBooking(invalidRequest);
         });
 
         assertEquals("O horário de início deve ser anterior ao horário de término.", exception.getMessage());
-        // Não precisa nem bater no banco, já deve falhar antes
         verify(roomRepository, never()).findById(anyLong());
     }
 }

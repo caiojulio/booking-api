@@ -7,6 +7,7 @@ import com.coworking.bookingapi.repository.BookingRepository;
 import com.coworking.bookingapi.repository.RoomRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.coworking.bookingapi.dto.BookingRequestDTO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,32 +29,37 @@ public class BookingService {
      * Realiza uma nova reserva validando conflitos de horário.
      */
     @Transactional
-    public Booking createBooking(Booking booking) {
+    public Booking createBooking(BookingRequestDTO request) {
         // Horário de início deve ser antes do fim
-        if (booking.getStartTime().isAfter(booking.getEndTime()) || booking.getStartTime().equals(booking.getEndTime())) {
+        if (request.startTime().isAfter(request.endTime()) || request.startTime().equals(request.endTime())) {
             throw new IllegalArgumentException("O horário de início deve ser anterior ao horário de término.");
         }
 
         // Verifica se a sala existe
-        Room room = roomRepository.findById(booking.getRoom().getId())
+        Room room = roomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("Sala não encontrada com o ID informado."));
-
-        booking.setRoom(room);
 
         // Validação do conflito de horários
         boolean hasConflict = bookingRepository.existsConflictingBooking(
                 room.getId(),
-                booking.getDate(),
-                booking.getStartTime(),
-                booking.getEndTime()
+                request.date(),
+                request.startTime(),
+                request.endTime()
         );
 
         if (hasConflict) {
             throw new IllegalStateException("Já existe uma reserva confirmada para esta sala neste horário.");
         }
 
-        // Define o status inicial e salva
+        // Converte o DTO para a Entidade Booking
+        Booking booking = new Booking();
+        booking.setResponsiblePerson(request.responsiblePerson());
+        booking.setDate(request.date());
+        booking.setStartTime(request.startTime());
+        booking.setEndTime(request.endTime());
+        booking.setRoom(room);
         booking.setStatus(BookingStatus.CONFIRMED);
+
         return bookingRepository.save(booking);
     }
 

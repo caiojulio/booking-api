@@ -35,8 +35,7 @@ class RoomControllerTest {
     @MockitoBean
     private RoomService roomService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     @Test
     @DisplayName("Deve retornar 201 Created ao criar uma sala com dados válidos")

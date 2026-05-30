@@ -28,18 +28,9 @@ public class BookingController {
      */
     @PostMapping
     public ResponseEntity<Booking> createBooking(@RequestBody @Valid BookingRequestDTO request) {
-        Booking booking = new Booking();
-        booking.setResponsiblePerson(request.responsiblePerson());
-        booking.setDate(request.date());
-        booking.setStartTime(request.startTime());
-        booking.setEndTime(request.endTime());
+        // O Controller repassa o DTO diretamente
+        Booking savedBooking = bookingService.createBooking(request);
 
-        // Criamos uma referência da sala apenas com o ID para passar ao Service
-        Room roomReference = new Room();
-        roomReference.setId(request.roomId());
-        booking.setRoom(roomReference);
-
-        Booking savedBooking = bookingService.createBooking(booking);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedBooking);
     }
 
