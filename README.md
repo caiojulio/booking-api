@@ -2,6 +2,18 @@
 
 Uma API RESTful desenvolvida para gerir o cadastro e a reserva de salas num espaço de coworking. O sistema garante a integridade da agenda, prevenindo conflitos de horários através de regras de negócio validadas, e foi construído com foco em boas práticas de engenharia de software e arquitetura limpa.
 
+## Sumário
+
+* [Arquitetura e Modelagem](#arquitetura-e-modelagem)
+* [Tecnologias e Ferramentas](#tecnologias-e-ferramentas)
+* [Endpoints da API](#endpoints-da-api)
+* [Como Executar o Projeto Localmente](#como-executar-o-projeto-localmente)
+* [Exemplos de Uso (Postman)](#exemplos-de-uso-postman)
+* [Formato de Erros](#formato-de-erros)
+* [Decisões Arquiteturais](#decisões-arquiteturais)
+
+---
+
 ## Arquitetura e Modelagem
 
 <table>
@@ -100,6 +112,7 @@ booking-api/
 | `POST` | `/api/rooms` | Cadastra uma nova sala |
 | `GET` | `/api/rooms` | Lista todas as salas |
 | `GET` | `/api/rooms/{id}` | Busca uma sala por ID (404 se não existir) |
+| `GET` | `/api/rooms/available?date=&startTime=&endTime=` | Lista salas livres num período |
 | `POST` | `/api/bookings` | Cria uma reserva |
 | `DELETE` | `/api/bookings/{id}` | Cancela uma reserva |
 | `GET` | `/api/bookings/agenda?date=YYYY-MM-DD` | Consulta a agenda do dia |
@@ -163,13 +176,21 @@ Na raiz do projeto:
 
 **URL base:** `http://localhost:8080`
 
+**Headers recomendados** (requisições com corpo JSON):
+
+| Header | Valor |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Accept` | `application/json` |
+
 **Ordem sugerida para testar o fluxo completo:**
 
 1. Cadastrar uma sala → anote o `id` retornado
-2. Criar uma reserva usando esse `roomId`
-3. Consultar a agenda do dia
-4. Cancelar a reserva
-5. (Opcional) Repetir a reserva no mesmo horário para validar o conflito (409)
+2. Consultar salas livres no período desejado
+3. Criar uma reserva usando esse `roomId`
+4. Consultar a agenda do dia
+5. Cancelar a reserva
+6. (Opcional) Repetir a reserva no mesmo horário para validar o conflito (409)
 
 > **Tipos de sala válidos (`type`):** `INDIVIDUAL`, `SHARED`, `AUDITORIUM`
 
@@ -199,6 +220,8 @@ Na raiz do projeto:
   "capacity": 1
 }
 ```
+
+**Header de resposta:** `Location: http://localhost:8080/api/rooms/1`
 
 ---
 
@@ -238,7 +261,30 @@ Na raiz do projeto:
 
 ---
 
-### 4. Criar reserva
+### 4. Consultar salas livres
+
+**`GET`** `http://localhost:8080/api/rooms/available?date=2026-06-15&startTime=09:00:00&endTime=11:00:00`
+
+*(Sem body — parâmetros enviados na query string.)*
+
+**Resposta esperada — `200 OK`:**
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Sala Focus",
+    "type": "INDIVIDUAL",
+    "capacity": 1
+  }
+]
+```
+
+> Retorna apenas salas **sem reservas confirmadas** que se sobreponham ao período informado. Após criar a reserva do exemplo 5, repetir esta consulta no mesmo horário deve excluir a sala reservada da lista.
+
+---
+
+### 5. Criar reserva
 
 **`POST`** `http://localhost:8080/api/bookings`
 
@@ -272,7 +318,7 @@ Na raiz do projeto:
 
 ---
 
-### 5. Consultar agenda do dia
+### 6. Consultar agenda do dia
 
 **`GET`** `http://localhost:8080/api/bookings/agenda?date=2026-06-15`
 
@@ -294,7 +340,7 @@ Na raiz do projeto:
 
 ---
 
-### 6. Cancelar reserva
+### 7. Cancelar reserva
 
 **`DELETE`** `http://localhost:8080/api/bookings/1`
 
@@ -318,9 +364,11 @@ Na raiz do projeto:
 
 Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo) e a **resposta esperada** da API.
 
+> **Nota:** Os valores de `timestamp` nos exemplos são ilustrativos (podem incluir fração de segundos). A **ordem dos campos no JSON pode variar** — valide o conteúdo de cada campo, não a ordem.
+
 ---
 
-#### 7. Validação de DTO — nome da sala vazio
+#### 8. Validação de DTO — nome da sala vazio
 
 **`POST`** `http://localhost:8080/api/rooms`
 
@@ -350,7 +398,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 8. Horário inválido — início após o término
+#### 9. Horário inválido — início após o término
 
 **`POST`** `http://localhost:8080/api/bookings`
 
@@ -379,9 +427,9 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 9. Conflito de horário — slot já reservado
+#### 10. Conflito de horário — slot já reservado
 
-> **Pré-requisito:** existir uma reserva confirmada para a sala `1` das 09:00 às 11:00 no dia `2026-06-15` (use o exemplo 4 antes deste teste).
+> **Pré-requisito:** existir uma reserva confirmada para a sala `1` das 09:00 às 11:00 no dia `2026-06-15` (use o exemplo 5 antes deste teste).
 
 **`POST`** `http://localhost:8080/api/bookings`
 
@@ -389,7 +437,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ```json
 {
-  "responsiblePerson": "Arthur Pimentel",
+  "responsiblePerson": "Caio Silva",
   "date": "2026-06-15",
   "startTime": "10:00:00",
   "endTime": "12:00:00",
@@ -410,9 +458,9 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 10. Reserva já cancelada — cancelamento duplicado
+#### 11. Reserva já cancelada — cancelamento duplicado
 
-> **Pré-requisito:** cancelar a reserva `1` uma vez (exemplo 6) e repetir a mesma requisição.
+> **Pré-requisito:** cancelar a reserva `1` uma vez (exemplo 7) e repetir a mesma requisição.
 
 **`DELETE`** `http://localhost:8080/api/bookings/1`
 
@@ -431,7 +479,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 11. Sala inexistente — `roomId` inválido
+#### 12. Sala inexistente — `roomId` inválido
 
 **`POST`** `http://localhost:8080/api/bookings`
 
@@ -439,7 +487,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ```json
 {
-  "responsiblePerson": "Ana Costa",
+  "responsiblePerson": "Caio Silva",
   "date": "2026-06-15",
   "startTime": "09:00:00",
   "endTime": "10:00:00",
@@ -460,7 +508,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 12. Sala inexistente — busca por ID
+#### 13. Sala inexistente — busca por ID
 
 **`GET`** `http://localhost:8080/api/rooms/999`
 
@@ -470,13 +518,51 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
+#### 14. Reserva inexistente — cancelamento
+
+**`DELETE`** `http://localhost:8080/api/bookings/999`
+
+*(Sem body — requisição DELETE não envia JSON.)*
+
+**Resposta esperada — `400 Bad Request`:**
+
+```json
+{
+  "timestamp": "2026-06-15T11:00:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Reserva não encontrada com o ID informado."
+}
+```
+
+---
+
+#### 15. Horário inválido — consulta de salas livres
+
+**`GET`** `http://localhost:8080/api/rooms/available?date=2026-06-15&startTime=16:00:00&endTime=14:00:00`
+
+*(Sem body — parâmetros inválidos na query string.)*
+
+**Resposta esperada — `400 Bad Request`:**
+
+```json
+{
+  "timestamp": "2026-06-15T11:05:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "O horário de início deve ser anterior ao horário de término."
+}
+```
+
+---
+
 ## Formato de Erros
 
 Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`. Os campos presentes dependem do tipo de erro:
 
 | Campo | Sempre presente? | Descrição |
 |-------|------------------|-----------|
-| `timestamp` | Sim | Momento do erro (ISO-8601; pode incluir fração de segundos) |
+| `timestamp` | Sim | Momento do erro (pode incluir fração de segundos) |
 | `status` | Sim | Código HTTP numérico (ex.: `400`, `409`) |
 | `error` | Sim | Frase padrão do HTTP (ex.: `"Bad Request"`) |
 | `message` | Sim | Mensagem descritiva do erro |
@@ -528,6 +614,8 @@ Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`
 
 4. **Prevenção de Conflitos (BookingService):** A verificação de disponibilidade da sala está centralizada no serviço, com consulta **JPQL** no repositório para detectar sobreposição de horários, executada de forma transacional (`@Transactional`).
 
-5. **Tratamento Global de Exceções:** O `GlobalExceptionHandler` padroniza o JSON de erro e mapeia exceções para os status HTTP adequados (400, 409, 500), incluindo fallback para erros internos.
+5. **Consulta de Salas Livres (RoomService):** O endpoint `GET /api/rooms/available` retorna salas sem reservas confirmadas no período informado, utilizando consulta **JPQL** em `RoomRepository.findAvailableRooms`. A validação de horários inválidos ocorre na camada de serviço antes da consulta.
 
-6. **Infraestrutura como Código (K8s PoC):** O `docker-compose` provê apenas o PostgreSQL para avaliação local com banco real. A pasta `/k8s` é uma **Prova de Conceito (PoC)** de orquestração em Cloud (Deployments e Services), não sendo necessária para avaliar o desafio.
+6. **Tratamento Global de Exceções:** O `GlobalExceptionHandler` padroniza o JSON de erro e mapeia exceções para os status HTTP adequados (400, 409, 500), incluindo fallback para erros internos.
+
+7. **Infraestrutura como Código (K8s PoC):** O `docker-compose` provê apenas o PostgreSQL para avaliação local com banco real. A pasta `/k8s` é uma **Prova de Conceito (PoC)** de orquestração em Cloud (Deployments e Services), não sendo necessária para avaliar o desafio.
