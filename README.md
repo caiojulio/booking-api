@@ -7,6 +7,7 @@ Uma API RESTful robusta desenvolvida para gerir o cadastro e a reserva de salas 
 
 O projeto segue uma arquitetura em camadas típica de Spring Boot: **Controller → Service → Repository → Model**, com DTOs para entrada de dados, tratamento centralizado de exceções e testes separados por camada.
 
+```
 booking-api/
 ├── docs/                               
 │   └── diagrama-classes-coworking-api.png     # Modelagem de domínio
@@ -60,6 +61,7 @@ booking-api/
 ├── mvnw.cmd                           
 ├── pom.xml                            
 └── README.md
+```
 
 ## Modelagem do Domínio
 
