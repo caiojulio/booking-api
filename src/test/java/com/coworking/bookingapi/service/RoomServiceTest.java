@@ -112,4 +112,35 @@ class RoomServiceTest {
         assertTrue(foundRoom.isPresent());
         assertEquals(mockRoom.getName(), foundRoom.get().getName());
     }
+
+    @Test
+    @DisplayName("Deve retornar lista de salas disponíveis para um período válido")
+    void getAvailableRooms_Success() {
+        java.time.LocalDate date = java.time.LocalDate.of(2025, 12, 10);
+        java.time.LocalTime start = java.time.LocalTime.of(14, 0);
+        java.time.LocalTime end = java.time.LocalTime.of(16, 0);
+
+        when(roomRepository.findAvailableRooms(date, start, end)).thenReturn(List.of(mockRoom));
+
+        List<Room> availableRooms = roomService.getAvailableRooms(date, start, end);
+
+        assertEquals(1, availableRooms.size());
+        assertEquals("Auditorio Principal", availableRooms.get(0).getName());
+        verify(roomRepository, times(1)).findAvailableRooms(date, start, end);
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção ao buscar salas com horário de início posterior ao fim")
+    void getAvailableRooms_InvalidTimes_ShouldThrowException() {
+        java.time.LocalDate date = java.time.LocalDate.of(2025, 12, 10);
+        java.time.LocalTime start = java.time.LocalTime.of(16, 0); // Começa às 16h
+        java.time.LocalTime end = java.time.LocalTime.of(14, 0);   // Termina às 14h (Inválido)
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            roomService.getAvailableRooms(date, start, end);
+        });
+
+        assertEquals("O horário de início deve ser anterior ao horário de término.", exception.getMessage());
+        verify(roomRepository, never()).findAvailableRooms(any(), any(), any());
+    }
 }

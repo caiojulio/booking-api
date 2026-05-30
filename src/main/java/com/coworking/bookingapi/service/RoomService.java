@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.coworking.bookingapi.dto.RoomRequestDTO;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +35,18 @@ public class RoomService {
      */
     public List<Room> getAllRooms() {
         return roomRepository.findAll();
+    }
+
+    /**
+     * Consulta as salas disponíveis para uma data e período específicos.
+     */
+    public List<Room> getAvailableRooms(LocalDate date, LocalTime startTime, LocalTime endTime) {
+        // Regra de negócio simples: O horário de início deve ser anterior ao de término
+        if (startTime.isAfter(endTime) || startTime.equals(endTime)) {
+            throw new IllegalArgumentException("O horário de início deve ser anterior ao horário de término.");
+        }
+
+        return roomRepository.findAvailableRooms(date, startTime, endTime);
     }
 
     /**

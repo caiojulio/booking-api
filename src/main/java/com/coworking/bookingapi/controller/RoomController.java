@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @RestController
@@ -65,4 +67,20 @@ public class RoomController {
                 .map(ResponseEntity::ok)          // Se estiver presente, encapsula no 200 OK
                 .orElse(ResponseEntity.notFound().build()); // Se não, retorna 404
     }
+
+    @Operation(summary = "Consultar salas livres", description = "Retorna uma lista de salas disponíveis para uma data e período de tempo específicos.")
+    @GetMapping("/available")
+    public ResponseEntity<List<RoomResponseDTO>> getAvailableRooms(
+            @RequestParam LocalDate date,
+            @RequestParam LocalTime startTime,
+            @RequestParam LocalTime endTime) {
+
+        List<RoomResponseDTO> availableRooms = roomService.getAvailableRooms(date, startTime, endTime)
+                .stream()
+                .map(RoomResponseDTO::fromEntity)
+                .toList();
+
+        return ResponseEntity.ok(availableRooms);
+    }
+
 }

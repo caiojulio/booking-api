@@ -16,6 +16,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -90,5 +91,27 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$[0].name").value("Sala A"))
                 .andExpect(jsonPath("$[0].type").value("INDIVIDUAL")) // Verifica a serialização do ResponseDTO
                 .andExpect(jsonPath("$[1].name").value("Sala B"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 200 OK e a lista de salas livres ao buscar por disponibilidade")
+    void getAvailableRooms_ReturnsOk() throws Exception {
+        java.time.LocalDate date = java.time.LocalDate.of(2025, 12, 10);
+        java.time.LocalTime start = java.time.LocalTime.of(14, 0);
+        java.time.LocalTime end = java.time.LocalTime.of(16, 0);
+
+        Room room1 = new Room("Sala A", RoomType.INDIVIDUAL, 1);
+        ReflectionTestUtils.setField(room1, "id", 1L);
+
+        Mockito.when(roomService.getAvailableRooms(date, start, end)).thenReturn(List.of(room1));
+
+        mockMvc.perform(get("/api/rooms/available")
+                        .param("date", "2025-12-10")
+                        .param("startTime", "14:00:00")
+                        .param("endTime", "16:00:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size()").value(1))
+                .andExpect(jsonPath("$[0].name").value("Sala A"))
+                .andExpect(jsonPath("$[0].type").value("INDIVIDUAL"));
     }
 }

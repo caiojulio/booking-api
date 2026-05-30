@@ -110,31 +110,6 @@ Documentação interativa: [http://localhost:8080/swagger-ui/index.html](http://
 
 ---
 
-## Formato de Erros
-
-Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`:
-
-```json
-{
-  "timestamp": "2026-05-30T14:00:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Descrição do erro",
-  "fieldErrors": {
-    "campo": "Mensagem de validação"
-  }
-}
-```
-
-| Situação | HTTP | Observação |
-|----------|------|------------|
-| Validação de DTO (`@Valid`) | 400 | Inclui `fieldErrors` com detalhes por campo |
-| Regra de negócio inválida (ex.: horário, sala inexistente) | 400 | Apenas `message` |
-| Conflito de horário ou reserva já cancelada | 409 | Apenas `message` |
-| Erro interno não mapeado | 500 | Mensagem genérica de segurança |
-
----
-
 ## Como Executar o Projeto Localmente
 
 ### Opção 1: Via IDE (Padrão)
@@ -181,6 +156,365 @@ Na raiz do projeto:
 ```
 ./mvnw test
 ```
+
+---
+
+## Exemplos de Uso (Postman)
+
+**URL base:** `http://localhost:8080`
+
+**Ordem sugerida para testar o fluxo completo:**
+
+1. Cadastrar uma sala → anote o `id` retornado
+2. Criar uma reserva usando esse `roomId`
+3. Consultar a agenda do dia
+4. Cancelar a reserva
+5. (Opcional) Repetir a reserva no mesmo horário para validar o conflito (409)
+
+> **Tipos de sala válidos (`type`):** `INDIVIDUAL`, `SHARED`, `AUDITORIUM`
+
+---
+
+### 1. Cadastrar sala
+
+**`POST`** `http://localhost:8080/api/rooms`
+
+**Body (JSON):**
+
+```json
+{
+  "name": "Sala Focus",
+  "type": "INDIVIDUAL",
+  "capacity": 1
+}
+```
+
+**Resposta esperada — `201 Created`:**
+
+```json
+{
+  "id": 1,
+  "name": "Sala Focus",
+  "type": "INDIVIDUAL",
+  "capacity": 1
+}
+```
+
+---
+
+### 2. Listar salas
+
+**`GET`** `http://localhost:8080/api/rooms`
+
+**Resposta esperada — `200 OK`:**
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Sala Focus",
+    "type": "INDIVIDUAL",
+    "capacity": 1
+  }
+]
+```
+
+---
+
+### 3. Buscar sala por ID
+
+**`GET`** `http://localhost:8080/api/rooms/1`
+
+**Resposta esperada — `200 OK`:**
+
+```json
+{
+  "id": 1,
+  "name": "Sala Focus",
+  "type": "INDIVIDUAL",
+  "capacity": 1
+}
+```
+
+---
+
+### 4. Criar reserva
+
+**`POST`** `http://localhost:8080/api/bookings`
+
+**Body (JSON):**
+
+```json
+{
+  "responsiblePerson": "Sophia Pantoja",
+  "date": "2026-06-15",
+  "startTime": "09:00:00",
+  "endTime": "11:00:00",
+  "roomId": 1
+}
+```
+
+**Resposta esperada — `201 Created`:**
+
+```json
+{
+  "id": 1,
+  "responsiblePerson": "Sophia Pantoja",
+  "date": "2026-06-15",
+  "startTime": "09:00:00",
+  "endTime": "11:00:00",
+  "status": "CONFIRMED",
+  "roomName": "Sala Focus"
+}
+```
+
+**Header de resposta:** `Location: http://localhost:8080/api/bookings/1`
+
+---
+
+### 5. Consultar agenda do dia
+
+**`GET`** `http://localhost:8080/api/bookings/agenda?date=2026-06-15`
+
+**Resposta esperada — `200 OK`:**
+
+```json
+[
+  {
+    "id": 1,
+    "responsiblePerson": "Sophia Pantoja",
+    "date": "2026-06-15",
+    "startTime": "09:00:00",
+    "endTime": "11:00:00",
+    "status": "CONFIRMED",
+    "roomName": "Sala Focus"
+  }
+]
+```
+
+---
+
+### 6. Cancelar reserva
+
+**`DELETE`** `http://localhost:8080/api/bookings/1`
+
+**Resposta esperada — `200 OK`:**
+
+```json
+{
+  "id": 1,
+  "responsiblePerson": "Sophia Pantoja",
+  "date": "2026-06-15",
+  "startTime": "09:00:00",
+  "endTime": "11:00:00",
+  "status": "CANCELLED",
+  "roomName": "Sala Focus"
+}
+```
+
+---
+
+### Exemplos de erro (para validação)
+
+Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo) e a **resposta esperada** da API.
+
+---
+
+#### 7. Validação de DTO — nome da sala vazio
+
+**`POST`** `http://localhost:8080/api/rooms`
+
+**Body (JSON):**
+
+```json
+{
+  "name": "",
+  "type": "INDIVIDUAL",
+  "capacity": 1
+}
+```
+
+**Resposta esperada — `400 Bad Request`:**
+
+```json
+{
+  "fieldErrors": {
+    "name": "O nome da sala é obrigatório"
+  },
+  "error": "Bad Request",
+  "message": "Erro de validação nos dados enviados.",
+  "timestamp": "2026-05-30T17:20:44.7199556",
+  "status": 400
+}
+```
+
+---
+
+#### 8. Horário inválido — início após o término
+
+**`POST`** `http://localhost:8080/api/bookings`
+
+**Body (JSON):**
+
+```json
+{
+  "responsiblePerson": "Sophia Pantoja",
+  "date": "2026-06-15",
+  "startTime": "14:00:00",
+  "endTime": "10:00:00",
+  "roomId": 1
+}
+```
+
+**Resposta esperada — `400 Bad Request`:**
+
+```json
+{
+  "timestamp": "2026-06-15T10:35:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "O horário de início deve ser anterior ao horário de término."
+}
+```
+
+---
+
+#### 9. Conflito de horário — slot já reservado
+
+> **Pré-requisito:** existir uma reserva confirmada para a sala `1` das 09:00 às 11:00 no dia `2026-06-15` (use o exemplo 4 antes deste teste).
+
+**`POST`** `http://localhost:8080/api/bookings`
+
+**Body (JSON):**
+
+```json
+{
+  "responsiblePerson": "Arthur Pimentel",
+  "date": "2026-06-15",
+  "startTime": "10:00:00",
+  "endTime": "12:00:00",
+  "roomId": 1
+}
+```
+
+**Resposta esperada — `409 Conflict`:**
+
+```json
+{
+  "timestamp": "2026-06-15T10:40:00",
+  "status": 409,
+  "error": "Conflict",
+  "message": "Já existe uma reserva confirmada para esta sala neste horário."
+}
+```
+
+---
+
+#### 10. Reserva já cancelada — cancelamento duplicado
+
+> **Pré-requisito:** cancelar a reserva `1` uma vez (exemplo 6) e repetir a mesma requisição.
+
+**`DELETE`** `http://localhost:8080/api/bookings/1`
+
+*(Sem body — requisição DELETE não envia JSON.)*
+
+**Resposta esperada — `409 Conflict`:**
+
+```json
+{
+  "timestamp": "2026-06-15T10:45:00",
+  "status": 409,
+  "error": "Conflict",
+  "message": "Esta reserva já encontra-se cancelada."
+}
+```
+
+---
+
+#### 11. Sala inexistente — `roomId` inválido
+
+**`POST`** `http://localhost:8080/api/bookings`
+
+**Body (JSON):**
+
+```json
+{
+  "responsiblePerson": "Ana Costa",
+  "date": "2026-06-15",
+  "startTime": "09:00:00",
+  "endTime": "10:00:00",
+  "roomId": 999
+}
+```
+
+**Resposta esperada — `400 Bad Request`:**
+
+```json
+{
+  "timestamp": "2026-06-15T10:50:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Sala não encontrada com o ID informado."
+}
+```
+
+---
+
+#### 12. Sala inexistente — busca por ID
+
+**`GET`** `http://localhost:8080/api/rooms/999`
+
+*(Sem body — requisição GET não envia JSON.)*
+
+**Resposta esperada — `404 Not Found`:** corpo vazio
+
+---
+
+## Formato de Erros
+
+Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`. Os campos presentes dependem do tipo de erro:
+
+| Campo | Sempre presente? | Descrição |
+|-------|------------------|-----------|
+| `timestamp` | Sim | Momento do erro (ISO-8601; pode incluir fração de segundos) |
+| `status` | Sim | Código HTTP numérico (ex.: `400`, `409`) |
+| `error` | Sim | Frase padrão do HTTP (ex.: `"Bad Request"`) |
+| `message` | Sim | Mensagem descritiva do erro |
+| `fieldErrors` | Apenas em validação de DTO | Mapa `campo → mensagem` |
+
+**Exemplo — erro de validação:**
+
+```json
+{
+  "timestamp": "2026-05-30T17:20:44.7199556",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Erro de validação nos dados enviados.",
+  "fieldErrors": {
+    "name": "O nome da sala é obrigatório"
+  }
+}
+```
+
+**Exemplo — erro de negócio (sem `fieldErrors`):**
+
+```json
+{
+  "timestamp": "2026-05-30T17:25:10.1234567",
+  "status": 409,
+  "error": "Conflict",
+  "message": "Já existe uma reserva confirmada para esta sala neste horário."
+}
+```
+
+> A **ordem dos campos no JSON não é garantida** — o Postman pode exibir `fieldErrors` antes de `timestamp`, por exemplo. Isso é comportamento normal e não indica erro.
+
+| Situação | HTTP | Observação |
+|----------|------|------------|
+| Validação de DTO (`@Valid`) | 400 | Inclui `fieldErrors` com detalhes por campo |
+| Regra de negócio inválida (ex.: horário, sala inexistente) | 400 | Apenas `message` |
+| Conflito de horário ou reserva já cancelada | 409 | Apenas `message` |
+| Erro interno não mapeado | 500 | Mensagem genérica de segurança |
 
 ---
 
