@@ -8,38 +8,30 @@ import com.coworking.bookingapi.repository.RoomRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.coworking.bookingapi.dto.BookingRequestDTO;
+import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
-
-    // Injeção de dependência via construtor com múltiplas dependências
-    public BookingService(BookingRepository bookingRepository, RoomRepository roomRepository) {
-        this.bookingRepository = bookingRepository;
-        this.roomRepository = roomRepository;
-    }
 
     /**
      * Realiza uma nova reserva validando conflitos de horário.
      */
     @Transactional
     public Booking createBooking(BookingRequestDTO request) {
-        // Horário de início deve ser antes do fim
         if (request.startTime().isAfter(request.endTime()) || request.startTime().equals(request.endTime())) {
             throw new IllegalArgumentException("O horário de início deve ser anterior ao horário de término.");
         }
 
-        // Verifica se a sala existe
         Room room = roomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("Sala não encontrada com o ID informado."));
 
-        // Validação do conflito de horários
         boolean hasConflict = bookingRepository.existsConflictingBooking(
                 room.getId(),
                 request.date(),
@@ -51,7 +43,6 @@ public class BookingService {
             throw new IllegalStateException("Já existe uma reserva confirmada para esta sala neste horário.");
         }
 
-        // Converte o DTO para a Entidade Booking
         Booking booking = new Booking();
         booking.setResponsiblePerson(request.responsiblePerson());
         booking.setDate(request.date());

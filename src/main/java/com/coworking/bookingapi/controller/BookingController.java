@@ -2,9 +2,9 @@ package com.coworking.bookingapi.controller;
 
 import com.coworking.bookingapi.dto.BookingRequestDTO;
 import com.coworking.bookingapi.model.Booking;
-import com.coworking.bookingapi.model.Room;
 import com.coworking.bookingapi.service.BookingService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,13 +15,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/bookings")
+@RequiredArgsConstructor
 public class BookingController {
 
     private final BookingService bookingService;
-
-    public BookingController(BookingService bookingService) {
-        this.bookingService = bookingService;
-    }
 
     /**
      * Endpoint para criar uma reserva.

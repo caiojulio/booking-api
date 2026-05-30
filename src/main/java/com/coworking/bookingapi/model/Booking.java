@@ -1,9 +1,18 @@
 package com.coworking.bookingapi.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "tb_bookings")
 public class Booking {
@@ -32,39 +41,4 @@ public class Booking {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
-
-    // Construtor vazio exigido pelo JPA
-    public Booking() {
-    }
-
-    public Booking(String responsiblePerson, LocalDate date, LocalTime startTime, LocalTime endTime, BookingStatus status, Room room) {
-        this.responsiblePerson = responsiblePerson;
-        this.date = date;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.status = status;
-        this.room = room;
-    }
-
-    // Getters e Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public String getResponsiblePerson() { return responsiblePerson; }
-    public void setResponsiblePerson(String responsiblePerson) { this.responsiblePerson = responsiblePerson; }
-
-    public LocalDate getDate() { return date; }
-    public void setDate(LocalDate date) { this.date = date; }
-
-    public LocalTime getStartTime() { return startTime; }
-    public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
-
-    public LocalTime getEndTime() { return endTime; }
-    public void setEndTime(LocalTime endTime) { this.endTime = endTime; }
-
-    public BookingStatus getStatus() { return status; }
-    public void setStatus(BookingStatus status) { this.status = status; }
-
-    public Room getRoom() { return room; }
-    public void setRoom(Room room) { this.room = room; }
 }

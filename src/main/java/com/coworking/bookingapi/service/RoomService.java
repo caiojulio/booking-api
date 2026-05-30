@@ -2,27 +2,25 @@ package com.coworking.bookingapi.service;
 
 import com.coworking.bookingapi.model.Room;
 import com.coworking.bookingapi.repository.RoomRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.coworking.bookingapi.dto.RoomRequestDTO;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class RoomService {
 
     private final RoomRepository roomRepository;
 
-    // Injeção de dependência via construtor
-    public RoomService(RoomRepository roomRepository) {
-        this.roomRepository = roomRepository;
-    }
-
     /**
      * Cadastra uma nova sala no sistema.
      */
-    public Room createRoom(Room room) {
-        // Como é um cadastro simples, delegamos direto para o repositório.
-        // Futuramente, regras adicionais de validação de sala entrariam aqui.
+    public Room createRoom(RoomRequestDTO request) {
+        // A conversão (DTO -> Entidade) agora acontece no lugar certo: na camada de negócio.
+        Room room = new Room(request.name(), request.type(), request.capacity());
         return roomRepository.save(room);
     }
 

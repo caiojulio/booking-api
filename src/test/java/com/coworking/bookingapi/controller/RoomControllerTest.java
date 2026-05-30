@@ -44,7 +44,7 @@ class RoomControllerTest {
         Room mockRoom = new Room("Sala A", RoomType.INDIVIDUAL, 1);
         mockRoom.setId(1L);
 
-        Mockito.when(roomService.createRoom(any(Room.class))).thenReturn(mockRoom);
+        Mockito.when(roomService.createRoom(any(RoomRequestDTO.class))).thenReturn(mockRoom);
 
         mockMvc.perform(post("/api/rooms")
                         .contentType(MediaType.APPLICATION_JSON)

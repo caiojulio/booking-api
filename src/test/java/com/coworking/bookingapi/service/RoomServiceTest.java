@@ -1,5 +1,6 @@
 package com.coworking.bookingapi.service;
 
+import com.coworking.bookingapi.dto.RoomRequestDTO;
 import com.coworking.bookingapi.model.Room;
 import com.coworking.bookingapi.model.RoomType;
 import com.coworking.bookingapi.repository.RoomRepository;
@@ -35,19 +36,25 @@ class RoomServiceTest {
     private RoomService roomService;
 
     private Room mockRoom;
+    private RoomRequestDTO validRequestDTO; // DTO para o teste
 
     @BeforeEach
     void setUp() {
+        // Objeto que simula o que o banco de dados vai retornar
         mockRoom = new Room("Auditorio Principal", RoomType.AUDITORIUM, 50);
         mockRoom.setId(1L);
+
+        // Objeto que simula os dados que o usuário enviou
+        validRequestDTO = new RoomRequestDTO("Auditorio Principal", RoomType.AUDITORIUM, 50);
     }
 
     @Test
     @DisplayName("Deve guardar e retornar uma nova sala com sucesso")
     void createRoom_Success() {
+        // Dizemos ao mock para retornar nossa mockRoom quando o repositório tentar salvar qualquer coisa
         when(roomRepository.save(any(Room.class))).thenReturn(mockRoom);
 
-        Room savedRoom = roomService.createRoom(mockRoom);
+        Room savedRoom = roomService.createRoom(validRequestDTO);
 
         assertNotNull(savedRoom);
         assertEquals("Auditorio Principal", savedRoom.getName());
