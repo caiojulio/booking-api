@@ -27,7 +27,8 @@ Uma API RESTful desenvolvida para gerir o cadastro e a reserva de salas num espa
       <pre>
 booking-api/
 ├── docs/
-│   └── diagrama-classes-coworking-api.svg
+│   ├── diagrama-classes-coworking-api.svg
+│   └── modelagem-banco-coworking.svg
 ├── .mvn/
 │   └── wrapper/
 │       └── maven-wrapper.properties
@@ -90,6 +91,12 @@ booking-api/
       <br><br>
       <p align="center">
         <i>Diagrama de classes do projeto.</i>
+      </p>
+      <br>
+      <img src="docs/modelagem-banco-coworking.svg" alt="Modelagem do Banco de Dados da API" width="100%">
+      <br><br>
+      <p align="center">
+        <i>Modelagem do banco de dados do projeto.</i>
       </p>
     </td>
   </tr>
