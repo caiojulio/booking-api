@@ -117,13 +117,13 @@ booking-api/
 | `GET` | `/api/rooms/{id}` | Busca uma sala por ID (404 se não existir) |
 | `GET` | `/api/rooms/available?date=&startTime=&endTime=` | Lista salas livres num período |
 | `POST` | `/api/bookings` | Cria uma reserva |
-| `GET` | `/api/bookings?page=&size=&sort=` | Lista todas as reservas com paginação (uso administrativo) |
+| `GET` | `/api/bookings` | Lista todas as reservas com paginação (uso administrativo) |
 | `DELETE` | `/api/bookings/{id}` | Cancela uma reserva |
 | `GET` | `/api/bookings/agenda?date=YYYY-MM-DD` | Consulta a agenda do dia |
 
 As respostas de sucesso utilizam `RoomResponseDTO` e `BookingResponseDTO`, evitando expor entidades JPA diretamente. Criações (`POST`) retornam **201 Created** com o cabeçalho `Location` apontando para o recurso criado.
 
-> A listagem de reservas usa paginação do Spring Data. Por padrão, retorna `size=10` e ordena por `date` em ordem decrescente. O termo "uso administrativo" indica a finalidade do endpoint; o projeto não implementa autenticação/autorização.
+> A listagem de reservas usa paginação do Spring Data. Os parâmetros `page`, `size` e `sort` são opcionais: sem eles, a API retorna `page=0`, `size=10` e ordena por `date` em ordem decrescente. Para customizar, use por exemplo `/api/bookings?page=0&size=10&sort=date,desc`. O termo "uso administrativo" indica a finalidade do endpoint, para um cenário em que seja implementado autenticação/autorização com declaração de perfis de usuário.
 
 Documentação interativa: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 
@@ -388,9 +388,9 @@ Na raiz do projeto:
 
 ### 8. Listar reservas com paginação
 
-**`GET`** `http://localhost:8080/api/bookings?page=0&size=10&sort=date,desc`
+**`GET`** `http://localhost:8080/api/bookings`
 
-*(Sem body — parâmetros de paginação enviados na query string.)*
+*(Sem body — os parâmetros de paginação são opcionais. Exemplo customizado: `http://localhost:8080/api/bookings?page=0&size=10&sort=date,desc`.)*
 
 **Resposta esperada — `200 OK`:**
 
