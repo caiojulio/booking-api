@@ -16,6 +16,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import java.util.List;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Optional;
@@ -155,5 +161,27 @@ class BookingServiceTest {
 
         assertEquals("Esta reserva já encontra-se cancelada.", exception.getMessage());
         verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    @DisplayName("Deve retornar uma página de reservas com sucesso (Admin)")
+    void getAllBookings_ShouldReturnPagedBookings() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Page<Booking> expectedPage = new PageImpl<>(List.of(mockBooking));
+
+        when(bookingRepository.findAll(pageable)).thenReturn(expectedPage);
+
+        // Act
+        Page<Booking> result = bookingService.getAllBookings(pageable);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getContent().size());
+        assertEquals("John Doe", result.getContent().get(0).getResponsiblePerson());
+
+        verify(bookingRepository, times(1)).findAll(pageable);
     }
 }

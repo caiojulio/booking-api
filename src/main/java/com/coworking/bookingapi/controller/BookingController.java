@@ -15,6 +15,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.web.bind.annotation.GetMapping;
+
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
@@ -37,7 +43,6 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> createBooking(@RequestBody @Valid BookingRequestDTO request) {
         Booking savedBooking = bookingService.createBooking(request);
 
-        // Boa prática REST: Retornar a URI (link) do novo recurso criado no cabeçalho "Location"
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(savedBooking.getId())
@@ -71,4 +76,17 @@ public class BookingController {
 
         return ResponseEntity.ok(agenda);
     }
+
+    @Operation(summary = "Listar todas as reservas (Admin)", description = "Retorna todas as reservas do sistema com paginação.")
+    @GetMapping
+    public ResponseEntity<Page<BookingResponseDTO>> getAllBookings(
+            @PageableDefault(size = 10, sort = "date", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<Booking> bookingsPage = bookingService.getAllBookings(pageable);
+
+        Page<BookingResponseDTO> responsePage = bookingsPage.map(BookingResponseDTO::fromEntity);
+
+        return ResponseEntity.ok(responsePage);
+    }
+
 }

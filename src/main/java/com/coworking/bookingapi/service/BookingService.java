@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.coworking.bookingapi.dto.BookingRequestDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -60,6 +62,13 @@ public class BookingService {
      */
     public List<Booking> getDailyAgenda(LocalDate date) {
         return bookingRepository.findByDateAndStatusOrderByStartTimeAsc(date, BookingStatus.CONFIRMED);
+    }
+
+    /**
+     * Consulta todas as reservas
+     */
+    public Page<Booking> getAllBookings(Pageable pageable) {
+        return bookingRepository.findAll(pageable);
     }
 
     /**
