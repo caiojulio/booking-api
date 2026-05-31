@@ -46,6 +46,7 @@ booking-api/
 │   │   │   ├── dto/
 │   │   │   │   ├── BookingRequestDTO.java
 │   │   │   │   ├── BookingResponseDTO.java
+│   │   │   │   ├── ErrorResponseDTO.java
 │   │   │   │   ├── RoomRequestDTO.java
 │   │   │   │   └── RoomResponseDTO.java
 │   │   │   ├── exception/
@@ -68,6 +69,7 @@ booking-api/
 │       └── java/com/coworking/bookingapi/
 │           ├── BookingApiApplicationTests.java
 │           ├── controller/
+│           │   ├── BookingControllerTest.java
 │           │   └── RoomControllerTest.java
 │           └── service/
 │               ├── BookingServiceTest.java
@@ -115,10 +117,13 @@ booking-api/
 | `GET` | `/api/rooms/{id}` | Busca uma sala por ID (404 se não existir) |
 | `GET` | `/api/rooms/available?date=&startTime=&endTime=` | Lista salas livres num período |
 | `POST` | `/api/bookings` | Cria uma reserva |
+| `GET` | `/api/bookings?page=&size=&sort=` | Lista todas as reservas com paginação (uso administrativo) |
 | `DELETE` | `/api/bookings/{id}` | Cancela uma reserva |
 | `GET` | `/api/bookings/agenda?date=YYYY-MM-DD` | Consulta a agenda do dia |
 
 As respostas de sucesso utilizam `RoomResponseDTO` e `BookingResponseDTO`, evitando expor entidades JPA diretamente. Criações (`POST`) retornam **201 Created** com o cabeçalho `Location` apontando para o recurso criado.
+
+> A listagem de reservas usa paginação do Spring Data. Por padrão, retorna `size=10` e ordena por `date` em ordem decrescente. O termo "uso administrativo" indica a finalidade do endpoint; o projeto não implementa autenticação/autorização.
 
 Documentação interativa: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 
@@ -135,6 +140,15 @@ A forma mais simples. O projeto utiliza H2 em memória por padrão.
 3. Execute a classe principal `BookingApiApplication.java`.
 4. A API estará disponível na porta `8080`.
 5. Acesse o Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+6. Opcionalmente, acesse o console H2: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
+
+**Configuração padrão do H2:**
+
+| Campo | Valor |
+|-------|-------|
+| JDBC URL | `jdbc:h2:mem:coworkingdb` |
+| User | `sa` |
+| Password | *(vazio)* |
 
 ### Opção 2: Base de Dados Real via Docker (PostgreSQL)
 
@@ -162,6 +176,16 @@ Simula um ambiente mais próximo da produção: o Docker provê o PostgreSQL e o
 
 3. **Pronto!** A API estará conectada ao PostgreSQL. Acesse o Swagger UI:
    [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+
+O perfil `prod` também aceita variáveis de ambiente para conexão com o banco:
+
+| Variável | Valor padrão |
+|----------|--------------|
+| `DB_HOST` | `localhost` |
+| `DB_PORT` | `5432` |
+| `DB_NAME` | `coworkingdb` |
+| `DB_USER` | `postgres` |
+| `DB_PASSWORD` | `password` |
 
 ### Executar os Testes
 
@@ -191,7 +215,8 @@ Na raiz do projeto:
 3. Criar uma reserva usando esse `roomId`
 4. Consultar a agenda do dia
 5. Cancelar a reserva
-6. (Opcional) Repetir a reserva no mesmo horário para validar o conflito (409)
+6. Listar todas as reservas com paginação
+7. (Opcional) Repetir a reserva no mesmo horário para validar o conflito (409)
 
 > **Tipos de sala válidos (`type`):** `INDIVIDUAL`, `SHARED`, `AUDITORIUM`
 
@@ -361,6 +386,42 @@ Na raiz do projeto:
 
 ---
 
+### 8. Listar reservas com paginação
+
+**`GET`** `http://localhost:8080/api/bookings?page=0&size=10&sort=date,desc`
+
+*(Sem body — parâmetros de paginação enviados na query string.)*
+
+**Resposta esperada — `200 OK`:**
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "responsiblePerson": "Sophia Pantoja",
+      "date": "2026-06-15",
+      "startTime": "09:00:00",
+      "endTime": "11:00:00",
+      "status": "CANCELLED",
+      "roomName": "Sala Focus"
+    }
+  ],
+  "pageable": {
+    "pageNumber": 0,
+    "pageSize": 10
+  },
+  "totalElements": 1,
+  "totalPages": 1,
+  "size": 10,
+  "number": 0
+}
+```
+
+> A estrutura completa do objeto `Page` pode variar conforme a versão do Spring, mas os campos principais (`content`, `totalElements`, `totalPages`, `size`, `number`) indicam os dados e metadados da paginação.
+
+---
+
 ### Exemplos de erro (para validação)
 
 Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo) e a **resposta esperada** da API.
@@ -369,7 +430,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 8. Validação de DTO — nome da sala vazio
+#### 9. Validação de DTO — nome da sala vazio
 
 **`POST`** `http://localhost:8080/api/rooms`
 
@@ -399,7 +460,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 9. Horário inválido — início após o término
+#### 10. Horário inválido — início após o término
 
 **`POST`** `http://localhost:8080/api/bookings`
 
@@ -428,9 +489,9 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 10. Conflito de horário — slot já reservado
+#### 11. Conflito de horário — slot já reservado
 
-> **Pré-requisito:** existir uma reserva confirmada para a sala `1` das 09:00 às 11:00 no dia `2026-06-15` (use o exemplo 5 antes deste teste).
+> **Pré-requisito:** existir uma reserva confirmada para a sala `1` das 09:00 às 11:00 no dia `2026-06-15` (use o exemplo 5 antes deste teste ou realize o POST do seguinte exemplo duas vezes seguidas).
 
 **`POST`** `http://localhost:8080/api/bookings`
 
@@ -459,7 +520,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 11. Reserva já cancelada — cancelamento duplicado
+#### 12. Reserva já cancelada — cancelamento duplicado
 
 > **Pré-requisito:** cancelar a reserva `1` uma vez (exemplo 7) e repetir a mesma requisição.
 
@@ -480,7 +541,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 12. Sala inexistente — `roomId` inválido
+#### 13. Sala inexistente — `roomId` inválido
 
 **`POST`** `http://localhost:8080/api/bookings`
 
@@ -509,7 +570,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 13. Sala inexistente — busca por ID
+#### 14. Sala inexistente — busca por ID
 
 **`GET`** `http://localhost:8080/api/rooms/999`
 
@@ -519,7 +580,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 14. Reserva inexistente — cancelamento
+#### 15. Reserva inexistente — cancelamento
 
 **`DELETE`** `http://localhost:8080/api/bookings/999`
 
@@ -538,7 +599,7 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
-#### 15. Horário inválido — consulta de salas livres
+#### 16. Horário inválido — consulta de salas livres
 
 **`GET`** `http://localhost:8080/api/rooms/available?date=2026-06-15&startTime=16:00:00&endTime=14:00:00`
 
@@ -557,9 +618,84 @@ Cada cenário abaixo traz o **JSON para enviar no Postman** (quando houver corpo
 
 ---
 
+#### 17. Nome de sala duplicado
+
+> **Pré-requisito:** já existir uma sala cadastrada com o nome `"Sala Focus"`.
+
+**`POST`** `http://localhost:8080/api/rooms`
+
+**Body (JSON):**
+
+```json
+{
+  "name": "Sala Focus",
+  "type": "INDIVIDUAL",
+  "capacity": 1
+}
+```
+
+**Resposta esperada — `409 Conflict`:**
+
+```json
+{
+  "timestamp": "2026-06-15T11:10:00",
+  "status": 409,
+  "error": "Conflict",
+  "message": "Já existe um registro com estes dados únicos no sistema."
+}
+```
+
+---
+
+#### 18. JSON inválido ou enum inválido
+
+**`POST`** `http://localhost:8080/api/rooms`
+
+**Body (JSON):**
+
+```json
+{
+  "name": "Sala Workshop",
+  "type": "MEETING",
+  "capacity": 8
+}
+```
+
+**Resposta esperada — `400 Bad Request`:**
+
+```json
+{
+  "timestamp": "2026-06-15T11:15:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Formato de dado inválido no corpo da requisição. Verifique se os valores dos campos estão corretos."
+}
+```
+
+---
+
+#### 19. Parâmetro inválido na URL
+
+**`GET`** `http://localhost:8080/api/rooms/abc`
+
+*(Sem body — o ID deveria ser numérico.)*
+
+**Resposta esperada — `400 Bad Request`:**
+
+```json
+{
+  "timestamp": "2026-06-15T11:20:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "O parâmetro enviado na URL é inválido. Verifique se o formato está correto."
+}
+```
+
+---
+
 ## Formato de Erros
 
-Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`. Os campos presentes dependem do tipo de erro:
+Todos os erros tratados pelo `GlobalExceptionHandler` seguem um envelope JSON padronizado usando `ErrorResponseDTO`. Os campos presentes dependem do tipo de erro; campos nulos não são serializados.
 
 | Campo | Sempre presente? | Descrição |
 |-------|------------------|-----------|
@@ -594,13 +730,15 @@ Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`
 }
 ```
 
-> A **ordem dos campos no JSON não é garantida** — o Postman pode exibir `fieldErrors` antes de `timestamp`, por exemplo. Isso é comportamento normal e não indica erro.
-
 | Situação | HTTP | Observação |
 |----------|------|------------|
 | Validação de DTO (`@Valid`) | 400 | Inclui `fieldErrors` com detalhes por campo |
+| JSON malformado, enum inválido ou corpo ilegível | 400 | Mensagem padronizada sobre formato inválido |
+| Parâmetro de URL com tipo inválido | 400 | Ex.: `/api/rooms/abc` |
 | Regra de negócio inválida (ex.: horário, sala inexistente) | 400 | Apenas `message` |
+| Violação de dados únicos (ex.: nome de sala duplicado) | 409 | Apenas `message` |
 | Conflito de horário ou reserva já cancelada | 409 | Apenas `message` |
+| Busca de sala por ID inexistente | 404 | Retorna corpo vazio no endpoint `GET /api/rooms/{id}` |
 | Erro interno não mapeado | 500 | Mensagem genérica de segurança |
 
 ---
@@ -609,7 +747,7 @@ Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`
 
 1. **Idioma do Código e Domínio:** O código-fonte (classes, variáveis, métodos) foi escrito em **Inglês**. As mensagens de retorno da API (exceções, validações de DTO) e as descrições dos testes (`@DisplayName`) permanecem em **Português**, refletindo o idioma do negócio e dos utilizadores finais.
 
-2. **Separação de Camadas e DTOs:** Os `Controllers` recebem DTOs de entrada (`RoomRequestDTO`, `BookingRequestDTO`) e devolvem DTOs de saída (`RoomResponseDTO`, `BookingResponseDTO`), protegendo as entidades JPA de exposição direta na API. A lógica de negócio e persistência ficam na camada `Service`; o acesso a dados, nos `Repository`. Injeção de dependências via construtor com Lombok (`@RequiredArgsConstructor`).
+2. **Separação de Camadas e DTOs:** Os `Controllers` recebem DTOs de entrada (`RoomRequestDTO`, `BookingRequestDTO`) e devolvem DTOs de saída (`RoomResponseDTO`, `BookingResponseDTO`), protegendo as entidades JPA de exposição direta na API. O contrato de erro fica centralizado em `ErrorResponseDTO`. A lógica de negócio e persistência ficam na camada `Service`; o acesso a dados, nos `Repository`. Injeção de dependências via construtor com Lombok (`@RequiredArgsConstructor`).
 
 3. **Modelo de Domínio Rico:** As entidades encapsulam regras e comportamentos — por exemplo, `Booking` valida horários no construtor e expõe `cancel()`; `Room` valida dados no construtor e em `updateDetails()`. Isso evita entidades anêmicas e concentra invariantes do domínio.
 
@@ -617,7 +755,7 @@ Todos os erros seguem um envelope JSON padronizado pelo `GlobalExceptionHandler`
 
 5. **Consulta de Salas Livres (RoomService):** O endpoint `GET /api/rooms/available` retorna salas sem reservas confirmadas no período informado, utilizando consulta **JPQL** em `RoomRepository.findAvailableRooms`. A validação de horários inválidos ocorre na camada de serviço antes da consulta.
 
-6. **Tratamento Global de Exceções:** O `GlobalExceptionHandler` padroniza o JSON de erro e mapeia exceções para os status HTTP adequados (400, 409, 500), incluindo fallback para erros internos.
+6. **Tratamento Global de Exceções:** O `GlobalExceptionHandler` padroniza o JSON de erro e mapeia exceções para os status HTTP adequados (400, 409, 500), cobrindo validação de DTO, JSON inválido, parâmetro de URL inválido, violação de integridade no banco, conflitos de negócio e fallback para erros internos.
 
 7. **Infraestrutura como Código (K8s PoC):** O `docker-compose` provê apenas o PostgreSQL para avaliação local com banco real. A pasta `/k8s` é uma **Prova de Conceito (PoC)** de orquestração em Cloud (Deployments e Services), não sendo necessária para execução da API.
 
